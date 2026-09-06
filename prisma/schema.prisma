@@ -1,0 +1,38 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Student {
+  id           String      @id @default(cuid())
+  studentId    String      @unique
+  passwordHash String
+  tempPassword String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  coopRecord   CoopRecord?
+}
+
+model CoopRecord {
+  id              String   @id @default(cuid())
+  studentId       String   @unique
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  companyName     String
+  companyProvince String
+  jobPosition     String
+  companyAddress  String
+  detail          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ApiClient {
+  id        String   @id @default(cuid())
+  name      String
+  tokenHash String   @unique
+  createdAt DateTime @default(now())
+}
