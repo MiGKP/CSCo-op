@@ -243,12 +243,15 @@ export default function StudentImportPage(): React.JSX.Element {
                         {item.tempPassword}
                       </td>
                       <td className="py-2.5 px-4 text-right font-sans">
-                        <Link
-                          href={`/students/${item.studentId}/coop`}
-                          className="inline-block px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100 font-medium"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`User: ${item.studentId}\nPassword: ${item.tempPassword}`);
+                          }}
+                          className="inline-block px-3 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-medium transition-colors"
                         >
-                          กรอกข้อมูลฝึกงาน &rarr;
-                        </Link>
+                          คัดลอก User/Pass
+                        </button>
                       </td>
                     </tr>
                   ))}

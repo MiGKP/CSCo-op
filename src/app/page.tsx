@@ -4,28 +4,11 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-interface DashboardStats {
-  totalStudents: number;
-  completedCoop: number;
-  pendingCoop: number;
-}
-
 export default async function DashboardPage(): Promise<React.JSX.Element> {
-  const [totalStudents, completedCoop] = await Promise.all([
+  const [totalStudents, totalCompanies] = await Promise.all([
     prisma.student.count(),
-    prisma.coopRecord.count(),
+    prisma.company.count(),
   ]);
-
-  const stats: DashboardStats = {
-    totalStudents,
-    completedCoop,
-    pendingCoop: Math.max(0, totalStudents - completedCoop),
-  };
-
-  const completionPercentage =
-    stats.totalStudents > 0
-      ? Math.round((stats.completedCoop / stats.totalStudents) * 100)
-      : 0;
 
   return (
     <div className="space-y-8">
@@ -36,104 +19,135 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
             ภาควิชาวิทยาการคอมพิวเตอร์ &bull; ระบบอาจารย์
           </span>
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-            ระบบจัดการข้อมูลการฝึกสหกิจศึกษา
+            ระบบจัดการข้อมูลการฝึกงานและบัญชีนิสิต
           </h1>
           <p className="mt-3 text-slate-300 text-sm sm:text-base leading-relaxed">
-            อาจารย์สามารถนำเข้ารหัสนิสิตพร้อมสร้างรหัสผ่านแบบสุ่มอัตโนมัติ กรอกข้อมูลสถานประกอบการ
-            และส่งต่อข้อมูลไปยังเว็บไซต์สำหรับนิสิตผ่าน REST API โดยอัตโนมัติ
+            ระบบสำหรับอาจารย์เพื่อสร้าง User & Password ให้นิสิตใช้ล็อกอิน และรวบรวมลิสต์ข้อมูลบริษัท/ตำแหน่งที่รุ่นพี่เคยยื่นไป เพื่อส่งต่อข้อมูลไปยังเว็บไซต์ของนิสิตโดยเฉพาะ
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/companies/new"
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors"
+            >
+              + เพิ่มข้อมูลบริษัท
+            </Link>
             <Link
               href="/students/import"
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors"
             >
               + นำเข้านิสิตและสุ่มรหัสผ่าน
             </Link>
-            <Link
-              href="/students"
-              className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-lg transition-colors border border-white/20"
-            >
-              รายชื่อนิสิตทั้งหมด ({stats.totalStudents})
-            </Link>
           </div>
         </div>
       </div>
 
       {/* Quick Statistics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <p className="text-xs font-medium text-slate-500">จำนวนนิสิตทั้งหมดที่นำเข้า</p>
-          <p className="text-3xl font-extrabold text-slate-900 mt-2 font-mono">
-            {stats.totalStudents} <span className="text-sm font-normal text-slate-500">คน</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">
+              บริษัทในระบบ (สำหรับนิสิตดู)
+            </p>
+            <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-medium">
+              Company Directory
+            </span>
+          </div>
+          <p className="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
+            {totalCompanies} <span className="text-sm font-normal text-slate-500">บริษัท</span>
           </p>
-          <div className="mt-3 text-xs text-blue-600 font-medium">
-            <Link href="/students/import">+ นำเข้านิสิตเพิ่มเติม &rarr;</Link>
+          <div className="mt-4 flex space-x-3 text-xs font-medium">
+            <Link href="/companies" className="text-blue-600 hover:underline">
+              ดูรายการบริษัททั้งหมด &rarr;
+            </Link>
+            <span className="text-slate-300">|</span>
+            <Link href="/companies/new" className="text-blue-600 hover:underline">
+              + เพิ่มบริษัทใหม่
+            </Link>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <p className="text-xs font-medium text-slate-500">กรอกข้อมูลฝึกงานครบถ้วนแล้ว</p>
-          <p className="text-3xl font-extrabold text-emerald-600 mt-2 font-mono">
-            {stats.completedCoop} <span className="text-sm font-normal text-slate-500">คน</span>
-          </p>
-          <div className="mt-3 text-xs text-slate-500">
-            คิดเป็น {completionPercentage}% ของนิสิตทั้งหมด
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase text-slate-500 tracking-wider">
+              บัญชีนิสิตในระบบ (User & Pass)
+            </p>
+            <span className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-medium">
+              Student Accounts
+            </span>
           </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <p className="text-xs font-medium text-slate-500">รออาจารย์กรอกข้อมูล</p>
-          <p className="text-3xl font-extrabold text-amber-600 mt-2 font-mono">
-            {stats.pendingCoop} <span className="text-sm font-normal text-slate-500">คน</span>
+          <p className="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
+            {totalStudents} <span className="text-sm font-normal text-slate-500">คน</span>
           </p>
-          <div className="mt-3 text-xs text-amber-700 font-medium">
-            <Link href="/students">คลิกเพื่อกรอกข้อมูล &rarr;</Link>
+          <div className="mt-4 flex space-x-3 text-xs font-medium">
+            <Link href="/students" className="text-emerald-700 hover:underline">
+              ดูรายชื่อ & รหัสผ่าน &rarr;
+            </Link>
+            <span className="text-slate-300">|</span>
+            <Link href="/students/import" className="text-emerald-700 hover:underline">
+              + นำเข้านิสิตเพิ่ม
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* Feature Guide */}
+      {/* Guide Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Workflow Card */}
+        {/* Workflow */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
-          <h2 className="text-base font-bold text-slate-800 flex items-center space-x-2">
-            <span>ขั้นตอนการใช้งานสำหรับอาจารย์</span>
+          <h2 className="text-base font-bold text-slate-800">
+            2 หน้าที่หลักของอาจารย์ในระบบนี้
           </h2>
-          <ol className="space-y-3 text-sm text-slate-600 list-decimal list-inside">
-            <li className="leading-relaxed">
-              <strong className="text-slate-800">นำเข้ารหัสนิสิต:</strong> พิมพ์หรือวางรหัสนิสิต (เช่น 66011212222) ระบบจะสร้างรหัสผ่านแบบสุ่มอัตโนมัติ และดาวน์โหลดรหัสผ่านเพื่อแจกจ่ายนิสิตได้
-            </li>
-            <li className="leading-relaxed">
-              <strong className="text-slate-800">กรอกข้อมูล 5 รายการ:</strong> บันทึกชื่อบริษัท, จังหวัด, ตำแหน่ง, ที่อยู่บริษัท และรายละเอียดเพิ่มเติม
-            </li>
-            <li className="leading-relaxed">
-              <strong className="text-slate-800">ส่งต่อข้อมูลไปเว็บนิสิต:</strong> ระบบเปิด REST API ให้นำไปใช้งานได้ทันที มีการยืนยันสิทธิ์ด้วย Bearer Token ปลอดภัย
-            </li>
-          </ol>
+          <div className="space-y-4 text-sm text-slate-600">
+            <div className="flex space-x-3">
+              <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
+                1
+              </span>
+              <div>
+                <strong className="text-slate-900 block">สร้าง User & Password ให้นิสิต</strong>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  พิมพ์รหัสนิสิต (เช่น 66011212222) ระบบจะสุ่ม Password ให้อัตโนมัติ สามารถดาวน์โหลด CSV หรือคัดลอกไปแจกจ่ายให้นิสิตใช้ล็อกอิน
+                </p>
+              </div>
+            </div>
+
+            <div className="flex space-x-3">
+              <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
+                2
+              </span>
+              <div>
+                <strong className="text-slate-900 block">ลิสต์ข้อมูลบริษัท 5 รายการ</strong>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  กรอกชื่อบริษัท, จังหวัด, ตำแหน่งที่เคยเปิดรับหรือรุ่นพี่เคยยื่น, ที่อยู่บริษัท และรายละเอียดเพิ่มเติม เพื่อให้นิสิตเข้าไปดูเป็นแนวทาง
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* API Integration Card for External Student Web */}
+        {/* REST API Specs for Student Web */}
         <div className="bg-slate-900 text-slate-200 rounded-xl p-6 shadow-sm border border-slate-800 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white flex items-center space-x-2">
-              <span>ข้อมูลสำหรับเชื่อมต่อกับเว็บนิสิต (REST API)</span>
+            <h2 className="text-base font-bold text-white">
+              REST API สำหรับส่งต่อให้เว็บนิสิต
             </h2>
-            <span className="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-mono">
-              API Active
+            <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-mono">
+              Ready
             </span>
           </div>
           <p className="text-xs text-slate-400">
-            ทีมผู้พัฒนาเว็บนิสิตสามารถดึงข้อมูลฝึกงานของนิสิตแต่ละคนได้ผ่าน Endpoint ดังนี้:
+            Header: <code className="text-amber-300">Authorization: Bearer &lt;STUDENT_WEB_API_TOKEN&gt;</code>
           </p>
-          <div className="bg-slate-950 p-3 rounded-lg font-mono text-xs text-emerald-400 space-y-1 overflow-x-auto">
-            <p className="text-slate-500">// Header ที่ต้องส่ง</p>
-            <p className="text-white">Authorization: Bearer &lt;STUDENT_WEB_API_TOKEN&gt;</p>
-            <p className="text-slate-500 pt-2">// Endpoint ดึงข้อมูลนิสิตรายคน</p>
-            <p className="text-blue-400">GET /api/v1/students/:studentId</p>
-            <p className="text-slate-500 pt-2">// ตัวอย่าง Response ที่จะได้รับ</p>
-            <p className="text-slate-400 leading-relaxed">
-              &#123; &quot;success&quot;: true, &quot;data&quot;: &#123; &quot;companyName&quot;: &quot;...&quot;, &quot;jobPosition&quot;: &quot;...&quot; &#125; &#125;
-            </p>
+          <div className="bg-slate-950 p-3 rounded-lg font-mono text-xs space-y-2 text-slate-300 overflow-x-auto">
+            <div>
+              <p className="text-slate-500">// 1. นิสิตล็อกอิน (ตรวจ User & Pass ที่อาจารย์สร้าง)</p>
+              <p className="text-emerald-400 font-semibold">POST /api/v1/auth/login</p>
+              <p className="text-slate-400 text-[11px]">Body: &#123; &quot;studentId&quot;: &quot;...&quot;, &quot;password&quot;: &quot;...&quot; &#125;</p>
+            </div>
+            <div className="pt-2 border-t border-slate-800">
+              <p className="text-slate-500">// 2. ดึงลิสต์บริษัททั้งหมดไปแสดงให้นิสิตดู</p>
+              <p className="text-blue-400 font-semibold">GET /api/v1/companies</p>
+              <p className="text-slate-400 text-[11px]">Params (optional): ?search=...&amp;province=...</p>
+            </div>
           </div>
         </div>
       </div>

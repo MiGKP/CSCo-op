@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@/generated/prisma";
 
 // In development, preserve a single PrismaClient across fast reloads
 // to prevent exhausting database connection pools.
@@ -15,3 +15,5 @@ export const prisma: PrismaClient =
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
+
+export type { Company, Student } from "@/generated/prisma";

@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../src/generated/prisma";
 import { generateRandomPassword, hashPassword } from "../src/lib/auth";
 
 const prisma = new PrismaClient();
@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main(): Promise<void> {
   console.log("Seeding initial CS co-op data...");
 
-  // Clean existing seed if any
+  // 1. Clean existing seed data
   await prisma.student.deleteMany({
     where: {
       studentId: {
@@ -15,59 +15,65 @@ async function main(): Promise<void> {
     },
   });
 
+  await prisma.company.deleteMany({});
+
+  // 2. Create student accounts (User & Random Passwords)
   const pass1 = generateRandomPassword(8);
   const pass2 = generateRandomPassword(8);
   const pass3 = generateRandomPassword(8);
 
-  // Student 1: With complete 5-field co-op record (as requested in prompt example)
-  const student1 = await prisma.student.create({
-    data: {
-      studentId: "66011212222",
-      passwordHash: hashPassword(pass1),
-      tempPassword: pass1,
-      coopRecord: {
-        create: {
-          companyName: "บริษัท สยาม อินโนเวชั่น จำกัด (มหาชน)",
-          companyProvince: "กรุงเทพมหานคร",
-          jobPosition: "Software Engineer, Frontend Developer, Backend Trainee",
-          companyAddress: "123 อาคารสาทรซิตี้ทาวเวอร์ ชั้น 18 ถนนสาทรใต้ แขวงทุ่งมหาเมฆ เขตสาทร กรุงเทพฯ 10120",
-          detail: "ผ่านการสัมภาษณ์รอบสุดท้าย เริ่มงาน 1 มิ.ย. 2569 มีเบี้ยเลี้ยงวันละ 600 บาท และมีโน้ตบุ๊กสำหรับการทำงาน",
-        },
+  await prisma.student.createMany({
+    data: [
+      {
+        studentId: "66011212222",
+        passwordHash: hashPassword(pass1),
+        tempPassword: pass1,
       },
-    },
+      {
+        studentId: "66011212223",
+        passwordHash: hashPassword(pass2),
+        tempPassword: pass2,
+      },
+      {
+        studentId: "66011212224",
+        passwordHash: hashPassword(pass3),
+        tempPassword: pass3,
+      },
+    ],
   });
 
-  // Student 2: With co-op record in Chonburi
-  await prisma.student.create({
-    data: {
-      studentId: "66011212223",
-      passwordHash: hashPassword(pass2),
-      tempPassword: pass2,
-      coopRecord: {
-        create: {
-          companyName: "Eastern Tech Logistics Co., Ltd.",
-          companyProvince: "ชลบุรี",
-          jobPosition: "Data Engineer Trainee, Cloud Associate, QA Tester",
-          companyAddress: "88/1 หมู่ 5 นิคมอุตสาหกรรมแหลมฉบัง ตำบลทุ่งสุขลา อำเภอศรีราชา จังหวัดชลบุรี 20230",
-          detail: "ปฏิบัติงานแบบ Hybrid เข้าออฟฟิศสัปดาห์ละ 3 วัน",
-        },
+  // 3. Create independent Company directory (5 fields for students to browse)
+  await prisma.company.createMany({
+    data: [
+      {
+        name: "บริษัท สยาม อินโนเวชั่น จำกัด (มหาชน)",
+        province: "กรุงเทพมหานคร",
+        position: "Software Engineer, Frontend Developer, Backend Trainee",
+        address: "123 อาคารสาทรซิตี้ทาวเวอร์ ชั้น 18 ถนนสาทรใต้ แขวงทุ่งมหาเมฆ เขตสาทร กรุงเทพฯ 10120",
+        detail: "เบี้ยเลี้ยง 600 บาท/วัน, มีอุปกรณ์โน้ตบุ๊กให้, เข้าออฟฟิศแบบ Hybrid สัปดาห์ละ 2 วัน",
       },
-    },
-  });
-
-  // Student 3: Pending co-op form filling
-  await prisma.student.create({
-    data: {
-      studentId: "66011212224",
-      passwordHash: hashPassword(pass3),
-      tempPassword: pass3,
-    },
+      {
+        name: "Eastern Tech Logistics Co., Ltd.",
+        province: "ชลบุรี",
+        position: "Data Engineer Trainee, Cloud Associate, QA Tester",
+        address: "88/1 หมู่ 5 นิคมอุตสาหกรรมแหลมฉบัง ตำบลทุ่งสุขลา อำเภอศรีราชา จังหวัดชลบุรี 20230",
+        detail: "มีรถรับส่งพนักงานและหอพักใกล้เคียง แนะนำสำหรับนิสิตสนใจด้าน Cloud และ Data",
+      },
+      {
+        name: "Lanna Creative Digital Co., Ltd.",
+        province: "เชียงใหม่",
+        position: "Mobile App Developer (Flutter/iOS), Full Stack Trainee",
+        address: "456/7 ถนนนิมมานเหมินท์ ซอย 9 ตำบลสุเทพ อำเภอเมือง จังหวัดเชียงใหม่ 50200",
+        detail: "ทำงานแบบ Remote เป็นหลัก บรรยากาศแบบ Startup รุ่นพี่ชมว่าพี่เลี้ยงดูแลดีมาก",
+      },
+    ],
   });
 
   console.log("Seed completed successfully!");
-  console.log(`Student 1: 66011212222 (Pass: ${pass1}) [Co-op Filled]`);
-  console.log(`Student 2: 66011212223 (Pass: ${pass2}) [Co-op Filled]`);
-  console.log(`Student 3: 66011212224 (Pass: ${pass3}) [Co-op Pending]`);
+  console.log(`Student 1: 66011212222 (Pass: ${pass1})`);
+  console.log(`Student 2: 66011212223 (Pass: ${pass2})`);
+  console.log(`Student 3: 66011212224 (Pass: ${pass3})`);
+  console.log("Companies seeded: 3 companies");
 }
 
 main()

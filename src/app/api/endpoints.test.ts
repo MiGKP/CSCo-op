@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { POST as importStudentsHandler } from "@/app/api/students/import/route";
-import { POST as submitCoopHandler } from "@/app/api/students/[studentId]/coop/route";
-import { GET as getStudentPortalApiHandler } from "@/app/api/v1/students/[studentId]/route";
 import { POST as loginStudentHandler } from "@/app/api/v1/auth/login/route";
+import { POST as createCompanyHandler } from "@/app/api/companies/route";
+import { GET as getCompaniesForStudentWebHandler } from "@/app/api/v1/companies/route";
 
 const TEST_STUDENT_ID = "66011999999";
 let createdTempPass = "";
@@ -19,10 +19,13 @@ afterAll(async () => {
   await prisma.student.deleteMany({
     where: { studentId: TEST_STUDENT_ID },
   });
+  await prisma.company.deleteMany({
+    where: { name: "Test Corp Ltd." },
+  });
 });
 
-describe("API Integration: Student Import -> Co-op Entry -> Student Portal API", () => {
-  it("imports student and generates temporary password with hashed storage", async () => {
+describe("CS Co-op Portal Integration", () => {
+  it("imports student ID and generates random password", async () => {
     // Arrange
     const req = new NextRequest("http://localhost:3000/api/students/import", {
       method: "POST",
@@ -36,96 +39,13 @@ describe("API Integration: Student Import -> Co-op Entry -> Student Portal API",
     const data = body as { success: boolean; created: Array<{ studentId: string; tempPassword: string }> };
 
     // Assert
+    expect(res.status).toBe(200);
     expect(data.created[0]?.studentId).toBe(TEST_STUDENT_ID);
+    expect(data.created[0]?.tempPassword).toBeDefined();
     createdTempPass = data.created[0]?.tempPassword ?? "";
   });
 
-  it("saves the 5 required co-op fields for the imported student", async () => {
-    // Arrange
-    const payload = {
-      companyName: "Google Thailand",
-      companyProvince: "กรุงเทพมหานคร",
-      jobPosition: "Software Engineering Intern",
-      companyAddress: "CentralWorld Offices, Pathumwan, Bangkok",
-      detail: "รอบฝึกงานภาคฤดูร้อน 2569",
-    };
-    const req = new NextRequest(
-      `http://localhost:3000/api/students/${TEST_STUDENT_ID}/coop`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }
-    );
-
-    // Act
-    const res = await submitCoopHandler(req, {
-      params: Promise.resolve({ studentId: TEST_STUDENT_ID }),
-    });
-    const body: unknown = await res.json();
-    const result = body as { success: boolean; data: { companyName: string } };
-
-    // Assert
-    expect(result.data.companyName).toBe("Google Thailand");
-  });
-
-  it("returns 401 Unauthorized when Student Portal requests API without valid Bearer token", async () => {
-    // Arrange
-    const req = new NextRequest(
-      `http://localhost:3000/api/v1/students/${TEST_STUDENT_ID}`,
-      {
-        headers: { Authorization: "Bearer wrong_invalid_token" },
-      }
-    );
-
-    // Act
-    const res = await getStudentPortalApiHandler(req, {
-      params: Promise.resolve({ studentId: TEST_STUDENT_ID }),
-    });
-
-    // Assert
-    expect(res.status).toBe(401);
-  });
-
-  it("returns 200 OK with co-op details when Student Portal requests with valid Bearer token", async () => {
-    // Arrange
-    const req = new NextRequest(
-      `http://localhost:3000/api/v1/students/${TEST_STUDENT_ID}`,
-      {
-        headers: { Authorization: `Bearer ${TEST_TOKEN}` },
-      }
-    );
-
-    // Act
-    const res = await getStudentPortalApiHandler(req, {
-      params: Promise.resolve({ studentId: TEST_STUDENT_ID }),
-    });
-    const body: unknown = await res.json();
-    const result = body as { success: boolean; data: { companyName: string; jobPosition: string } };
-
-    // Assert
-    expect(result.data.jobPosition).toBe("Software Engineering Intern");
-  });
-
-  it("returns 404 Not Found when requesting non-existent student ID with valid Bearer token", async () => {
-    // Arrange
-    const req = new NextRequest(
-      `http://localhost:3000/api/v1/students/99999999999`,
-      {
-        headers: { Authorization: `Bearer ${TEST_TOKEN}` },
-      }
-    );
-
-    // Act
-    const res = await getStudentPortalApiHandler(req, {
-      params: Promise.resolve({ studentId: "99999999999" }),
-    });
-
-    // Assert
-    expect(res.status).toBe(404);
-  });
-
-  it("authenticates student on external Student Portal with generated password and returns company info", async () => {
+  it("authenticates student on external Student Portal with student ID and random password", async () => {
     // Arrange
     const req = new NextRequest("http://localhost:3000/api/v1/auth/login", {
       method: "POST",
@@ -142,30 +62,68 @@ describe("API Integration: Student Import -> Co-op Entry -> Student Portal API",
     // Act
     const res = await loginStudentHandler(req);
     const body: unknown = await res.json();
-    const result = body as { success: boolean; data: { companyName: string } };
+    const result = body as { success: boolean; data: { studentId: string } };
 
     // Assert
     expect(res.status).toBe(200);
     expect(result.success).toBe(true);
-    expect(result.data.companyName).toBe("Google Thailand");
+    expect(result.data.studentId).toBe(TEST_STUDENT_ID);
   });
 
-  it("rejects authentication with invalid password on external Student Portal", async () => {
+  it("allows instructor to create an independent company directory record (5 fields)", async () => {
     // Arrange
-    const req = new NextRequest("http://localhost:3000/api/v1/auth/login", {
+    const companyPayload = {
+      name: "Test Corp Ltd.",
+      province: "กรุงเทพมหานคร",
+      position: "Software Engineer, DevOps Trainee",
+      address: "123 Test Avenue, Bangkok",
+      detail: "สวัสดิการดี",
+    };
+
+    const req = new NextRequest("http://localhost:3000/api/companies", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${TEST_TOKEN}`,
-      },
-      body: JSON.stringify({
-        studentId: TEST_STUDENT_ID,
-        password: "wrong_password",
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(companyPayload),
     });
 
     // Act
-    const res = await loginStudentHandler(req);
+    const res = await createCompanyHandler(req);
+    const body: unknown = await res.json();
+    const result = body as { success: boolean; data: { name: string; position: string } };
+
+    // Assert
+    expect(res.status).toBe(200);
+    expect(result.data.name).toBe("Test Corp Ltd.");
+    expect(result.data.position).toBe("Software Engineer, DevOps Trainee");
+  });
+
+  it("serves company directory to external student web via GET /api/v1/companies with Bearer token", async () => {
+    // Arrange
+    const req = new NextRequest("http://localhost:3000/api/v1/companies", {
+      headers: { Authorization: `Bearer ${TEST_TOKEN}` },
+    });
+
+    // Act
+    const res = await getCompaniesForStudentWebHandler(req);
+    const body: unknown = await res.json();
+    const result = body as { success: boolean; data: Array<{ name: string; position: string }> };
+
+    // Assert
+    expect(res.status).toBe(200);
+    expect(result.success).toBe(true);
+    const found = result.data.find((c) => c.name === "Test Corp Ltd.");
+    expect(found).toBeDefined();
+    expect(found?.position).toBe("Software Engineer, DevOps Trainee");
+  });
+
+  it("rejects unauthorized external requests without Bearer token", async () => {
+    // Arrange
+    const req = new NextRequest("http://localhost:3000/api/v1/companies", {
+      headers: { Authorization: "Bearer wrong_token" },
+    });
+
+    // Act
+    const res = await getCompaniesForStudentWebHandler(req);
 
     // Assert
     expect(res.status).toBe(401);

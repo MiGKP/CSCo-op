@@ -19,31 +19,27 @@ export const batchStudentImportSchema = z.object({
   rawInput: z.string().min(1, { message: "กรุณาระบุรหัสนิสิตอย่างน้อย 1 รายการ" }),
 });
 
-export const coopRecordSchema = z.object({
-  companyName: z
+export const companySchema = z.object({
+  name: z
     .string()
     .trim()
     .min(1, { message: "กรุณาระบุชื่อบริษัท" })
     .max(200, { message: "ชื่อบริษัทต้องไม่เกิน 200 ตัวอักษร" }),
-  companyProvince: z
+  province: z
     .string()
     .trim()
     .min(1, { message: "กรุณาเลือกหรือระบุจังหวัดของบริษัท" }),
-  jobPosition: z
+  position: z
     .string()
     .trim()
-    .min(1, { message: "กรุณาระบุตำแหน่ง" })
+    .min(1, { message: "กรุณาระบุตำแหน่งที่เคยเปิดรับหรือรุ่นพี่เคยยื่น" })
     .max(300, { message: "ตำแหน่งต้องไม่เกิน 300 ตัวอักษร" }),
-  companyAddress: z
+  address: z
     .string()
     .trim()
     .min(1, { message: "กรุณาระบุที่อยู่ของบริษัท" }),
   detail: z.string().trim().optional(),
 });
-
-export interface ValidatedStudentIdItem {
-  studentId: string;
-}
 
 export interface ParseStudentIdsResult {
   validIds: string[];

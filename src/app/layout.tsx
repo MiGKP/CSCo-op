@@ -4,8 +4,8 @@ import "./globals.css";
 import React from "react";
 
 export const metadata: Metadata = {
-  title: "ระบบจัดการข้อมูลฝึกสหกิจศึกษา - อาจารย์ (CS Co-op Portal)",
-  description: "ระบบนำเข้านิสิตและบันทึกข้อมูลการฝึกสหกิจศึกษาสำหรับอาจารย์ภาควิชาวิทยาการคอมพิวเตอร์",
+  title: "ระบบอาจารย์ - จัดการข้อมูลฝึกงานและรหัสนิสิต (CS Co-op Portal)",
+  description: "ระบบสำหรับอาจารย์: สร้างบัญชีรหัสนิสิต และกรอกข้อมูลบริษัท/ตำแหน่งที่รุ่นพี่เคยยื่น เพื่อส่งต่อไปยังเว็บนิสิต",
 };
 
 interface RootLayoutProps {
@@ -21,12 +21,14 @@ export default function RootLayout({
         <header className="bg-blue-900 text-white shadow-md sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <span className="text-xl font-bold tracking-tight">CS Co-op Portal</span>
+              <Link href="/" className="text-xl font-bold tracking-tight hover:text-blue-100">
+                CS Co-op Portal
+              </Link>
               <span className="text-xs bg-blue-700 text-blue-100 px-2 py-0.5 rounded font-mono">
                 อาจารย์
               </span>
             </div>
-            <nav className="flex space-x-1 sm:space-x-4 text-sm font-medium">
+            <nav className="flex items-center space-x-1 sm:space-x-3 text-sm font-medium">
               <Link
                 href="/"
                 className="px-3 py-2 rounded-md hover:bg-blue-800 transition-colors"
@@ -34,10 +36,22 @@ export default function RootLayout({
                 หน้าหลัก
               </Link>
               <Link
+                href="/companies"
+                className="px-3 py-2 rounded-md hover:bg-blue-800 transition-colors"
+              >
+                รายการบริษัท
+              </Link>
+              <Link
+                href="/companies/new"
+                className="px-3 py-2 rounded-md bg-blue-800 hover:bg-blue-700 transition-colors"
+              >
+                + เพิ่มบริษัท
+              </Link>
+              <Link
                 href="/students"
                 className="px-3 py-2 rounded-md hover:bg-blue-800 transition-colors"
               >
-                รายชื่อนิสิต
+                บัญชีนิสิต
               </Link>
               <Link
                 href="/students/import"
