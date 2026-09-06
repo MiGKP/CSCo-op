@@ -5,6 +5,8 @@ import { POST as importStudentsHandler } from "@/app/api/students/import/route";
 import { POST as loginStudentHandler } from "@/app/api/v1/auth/login/route";
 import { POST as createCompanyHandler } from "@/app/api/companies/route";
 import { GET as getCompaniesForStudentWebHandler } from "@/app/api/v1/companies/route";
+import { POST as instructorLoginHandler } from "@/app/api/auth/instructor/login/route";
+import { POST as instructorLogoutHandler } from "@/app/api/auth/instructor/logout/route";
 
 const TEST_STUDENT_ID = "66011999999";
 let createdTempPass = "";
@@ -127,5 +129,57 @@ describe("CS Co-op Portal Integration", () => {
 
     // Assert
     expect(res.status).toBe(401);
+  });
+
+  it("authenticates instructor with valid credentials and sets session cookie", async () => {
+    // Arrange
+    const req = new NextRequest("http://localhost:3000/api/auth/instructor/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: "admin",
+        password: "coop2026pass",
+      }),
+    });
+
+    // Act
+    const res = await instructorLoginHandler(req);
+    const body: unknown = await res.json();
+    const result = body as { success: boolean };
+
+    // Assert
+    expect(res.status).toBe(200);
+    expect(result.success).toBe(true);
+    expect(res.cookies.get("instructor_session")?.value).toBeDefined();
+  });
+
+  it("rejects instructor login with invalid credentials", async () => {
+    // Arrange
+    const req = new NextRequest("http://localhost:3000/api/auth/instructor/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: "admin",
+        password: "wrong_password",
+      }),
+    });
+
+    // Act
+    const res = await instructorLoginHandler(req);
+
+    // Assert
+    expect(res.status).toBe(401);
+  });
+
+  it("logs out instructor and clears session cookie", async () => {
+    // Act
+    const res = await instructorLogoutHandler();
+    const body: unknown = await res.json();
+    const result = body as { success: boolean };
+
+    // Assert
+    expect(res.status).toBe(200);
+    expect(result.success).toBe(true);
+    expect(res.cookies.get("instructor_session")?.value).toBe("");
   });
 });
