@@ -1,7 +1,5 @@
-import { PrismaClient } from "../src/generated/prisma";
+import { prisma } from "../src/lib/prisma";
 import { generateRandomPassword, hashPassword } from "../src/lib/auth";
-
-const prisma = new PrismaClient();
 
 async function main(): Promise<void> {
   console.log("Seeding initial CS co-op data...");
