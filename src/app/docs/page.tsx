@@ -1,0 +1,16 @@
+import React from "react";
+import { PageHeader } from "@/components/PageHeader";
+import { ApiDocs } from "./ApiDocs";
+
+export default function ApiDocsPage(): React.JSX.Element {
+  return (
+    <div className="grid gap-8">
+      <PageHeader
+        eyebrow="สำหรับเว็บนิสิต"
+        title="เอกสาร API"
+        description="วิธียืนยันตัวตนและดึงข้อมูลบริษัทจากระบบอาจารย์ เพื่อนำไปแสดงบนเว็บฝั่งนิสิต โดยไม่ต้องคัดลอกข้อมูลซ้ำ"
+      />
+      <ApiDocs />
+    </div>
+  );
+}

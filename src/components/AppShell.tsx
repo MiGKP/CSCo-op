@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect, useState, useTransition } from "react";
 import {
+  IconApi,
   IconBuilding,
   IconClose,
   IconHome,
@@ -12,6 +13,7 @@ import {
   IconSignOut,
   IconUpload,
   IconUsers,
+  IconApi,
 } from "./icons";
 import { ThemeSelect } from "./ThemeSelect";
 import { Button } from "./ui/button";
@@ -40,6 +42,8 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/", label: "ภาพรวม", icon: <IconHome /> },
       { href: "/companies", label: "ข้อมูลบริษัท", icon: <IconBuilding /> },
       { href: "/students", label: "บัญชีนิสิต", icon: <IconUsers /> },
+      { href: "/docs", label: "เอกสาร API", icon: <IconApi /> },
+      { href: "/docs", label: "เอกสาร API", icon: <IconApi /> },
     ],
   },
   {
