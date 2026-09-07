@@ -13,7 +13,6 @@ import {
   IconSignOut,
   IconUpload,
   IconUsers,
-  IconApi,
 } from "./icons";
 import { ThemeSelect } from "./ThemeSelect";
 import { Button } from "./ui/button";
