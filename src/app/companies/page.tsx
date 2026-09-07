@@ -1,7 +1,9 @@
 import React from "react";
-import Link from "next/link";
+import { PageHeader } from "@/components/PageHeader";
+import { IconPlus } from "@/components/icons";
+import { LinkButton } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
-import { CompanyTable, CompanyListItem } from "./CompanyTable";
+import { CompanyTable, type CompanyListItem } from "./CompanyTable";
 
 export const dynamic = "force-dynamic";
 
@@ -10,35 +12,29 @@ export default async function CompaniesPage(): Promise<React.JSX.Element> {
     orderBy: { createdAt: "desc" },
   });
 
-  const companies: CompanyListItem[] = records.map((c) => ({
-    id: c.id,
-    name: c.name,
-    province: c.province,
-    position: c.position,
-    address: c.address,
-    detail: c.detail,
-    createdAt: c.createdAt.toISOString(),
-    updatedAt: c.updatedAt.toISOString(),
+  const companies: CompanyListItem[] = records.map((company) => ({
+    id: company.id,
+    name: company.name,
+    province: company.province,
+    position: company.position,
+    address: company.address,
+    detail: company.detail,
+    createdAt: company.createdAt.toISOString(),
+    updatedAt: company.updatedAt.toISOString(),
   }));
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">
-            รายการบริษัทและตำแหน่งงาน
-          </h1>
-          <p className="text-sm text-slate-600 mt-1">
-            ข้อมูลบริษัทที่อาจารย์รวบรวมไว้ สำหรับส่งต่อไปแสดงผลให้นิสิตดูผ่านเว็บนิสิต
-          </p>
-        </div>
-        <Link
-          href="/companies/new"
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors self-start sm:self-auto"
-        >
-          + เพิ่มข้อมูลบริษัท
-        </Link>
-      </div>
+    <div className="grid gap-8">
+      <PageHeader
+        eyebrow="รายการกลาง"
+        title="ข้อมูลบริษัท"
+        description="จัดการรายชื่อบริษัท ตำแหน่งที่เคยเปิดรับ และข้อมูลที่ส่งต่อให้นิสิตใช้ค้นคว้า"
+        actions={
+          <LinkButton href="/companies/new" variant="primary" icon={<IconPlus />}>
+            เพิ่มบริษัท
+          </LinkButton>
+        }
+      />
 
       <CompanyTable initialCompanies={companies} />
     </div>

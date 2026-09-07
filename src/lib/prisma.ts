@@ -1,5 +1,5 @@
+import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@/generated/prisma";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
 
 // In development, preserve a single PrismaClient across fast reloads
 // to prevent exhausting database connection pools.
@@ -8,8 +8,15 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient(): PrismaClient {
-  const url = process.env.DATABASE_URL || "file:./dev.db";
-  const adapter = new PrismaLibSql({ url });
+  const url = process.env.DATABASE_URL;
+
+  if (!url || url.startsWith("file:")) {
+    throw new Error(
+      "DATABASE_URL must be a Neon PostgreSQL URL. SQLite is not supported on Vercel."
+    );
+  }
+
+  const adapter = new PrismaNeon({ connectionString: url });
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],

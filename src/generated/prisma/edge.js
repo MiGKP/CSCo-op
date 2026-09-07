@@ -86,6 +86,9 @@ Prisma.NullTypes = NullTypes
  * Enums
  */
 exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
+  ReadUncommitted: 'ReadUncommitted',
+  ReadCommitted: 'ReadCommitted',
+  RepeatableRead: 'RepeatableRead',
   Serializable: 'Serializable'
 });
 
@@ -133,6 +136,11 @@ exports.Prisma.SortOrder = {
   desc: 'desc'
 };
 
+exports.Prisma.QueryMode = {
+  default: 'default',
+  insensitive: 'insensitive'
+};
+
 exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
@@ -152,8 +160,8 @@ const config = {
   "previewFeatures": [],
   "clientVersion": "7.10.0",
   "engineVersion": "0edf323efd1d98336f3f0a68684b56f689b900d3",
-  "activeProvider": "sqlite",
-  "inlineSchema": "datasource db {\n  provider = \"sqlite\"\n}\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"../src/generated/prisma\"\n}\n\nmodel Student {\n  id           String   @id @default(cuid())\n  studentId    String   @unique\n  passwordHash String\n  tempPassword String?\n  createdAt    DateTime @default(now())\n  updatedAt    DateTime @updatedAt\n}\n\nmodel Company {\n  id        String   @id @default(cuid())\n  name      String\n  province  String\n  position  String\n  address   String\n  detail    String?\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel CoopRecord {\n  id              String   @id @default(cuid())\n  studentId       String   @unique\n  companyName     String\n  companyProvince String\n  jobPosition     String\n  companyAddress  String\n  detail          String?\n  createdAt       DateTime @default(now())\n  updatedAt       DateTime @updatedAt\n}\n\nmodel ApiClient {\n  id        String   @id @default(cuid())\n  name      String\n  tokenHash String   @unique\n  createdAt DateTime @default(now())\n}\n"
+  "activeProvider": "postgresql",
+  "inlineSchema": "datasource db {\n  provider = \"postgresql\"\n}\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"../src/generated/prisma\"\n}\n\nmodel Student {\n  id           String   @id @default(cuid())\n  studentId    String   @unique\n  passwordHash String\n  tempPassword String?\n  createdAt    DateTime @default(now())\n  updatedAt    DateTime @updatedAt\n}\n\nmodel Company {\n  id        String   @id @default(cuid())\n  name      String\n  province  String\n  position  String\n  address   String\n  detail    String?\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel CoopRecord {\n  id              String   @id @default(cuid())\n  studentId       String   @unique\n  companyName     String\n  companyProvince String\n  jobPosition     String\n  companyAddress  String\n  detail          String?\n  createdAt       DateTime @default(now())\n  updatedAt       DateTime @updatedAt\n}\n\nmodel ApiClient {\n  id        String   @id @default(cuid())\n  name      String\n  tokenHash String   @unique\n  createdAt DateTime @default(now())\n}\n"
 }
 
 config.runtimeDataModel = JSON.parse("{\"models\":{\"Student\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"studentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"passwordHash\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"tempPassword\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null,\"schema\":null},\"Company\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"province\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"position\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"address\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"detail\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null,\"schema\":null},\"CoopRecord\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"studentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"companyName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"companyProvince\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"jobPosition\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"companyAddress\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"detail\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null,\"schema\":null},\"ApiClient\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"tokenHash\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null,\"schema\":null}},\"enums\":{},\"types\":{}}")

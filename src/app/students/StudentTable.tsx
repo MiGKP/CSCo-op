@@ -1,8 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import React, { useMemo, useState } from "react";
+import {
+  IconCheck,
+  IconCopy,
+  IconDownload,
+  IconEye,
+  IconEyeOff,
+  IconSearch,
+  IconTrash,
+  IconUpload,
+  IconUsers,
+} from "@/components/icons";
+import { Button, LinkButton } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Alert } from "@/components/ui/feedback";
+import { TextInput } from "@/components/ui/form";
 
 export interface StudentListItem {
   id: string;
@@ -15,65 +29,98 @@ interface StudentTableProps {
   initialStudents: StudentListItem[];
 }
 
-export function StudentTable({ initialStudents }: StudentTableProps): React.JSX.Element {
+export function StudentTable({
+  initialStudents,
+}: StudentTableProps): React.JSX.Element {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [students, setStudents] = useState<StudentListItem[]>(initialStudents);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [revealPasswords, setRevealPasswords] = useState<boolean>(true);
+  const [students, setStudents] =
+    useState<StudentListItem[]>(initialStudents);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [revealPasswords, setRevealPasswords] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const filteredStudents = students.filter((item) =>
-    item.studentId.includes(searchTerm)
+  const filteredStudents = useMemo(
+    () =>
+      students.filter((student) =>
+        student.studentId.includes(searchTerm.trim())
+      ),
+    [searchTerm, students]
   );
 
-  const handleDelete = async (studentId: string): Promise<void> => {
-    if (!window.confirm(`ต้องการลบบัญชีนิสิต ${studentId} ใช่หรือไม่?`)) {
+  const handleDelete = async (): Promise<void> => {
+    if (!pendingDelete) {
       return;
     }
 
-    setDeletingId(studentId);
+    setIsDeleting(true);
+    setErrorMsg(null);
+
     try {
-      const res = await fetch(`/api/internal/students/${studentId}`, {
+      const response = await fetch(`/api/internal/students/${pendingDelete}`, {
         method: "DELETE",
       });
 
-      if (res.ok) {
-        setStudents((prev) => prev.filter((s) => s.studentId !== studentId));
-        router.refresh();
-      } else {
-        const data: unknown = await res.json();
-        const errObj = data as { error?: string };
-        alert(errObj.error || "เกิดข้อผิดพลาดในการลบ");
+      if (!response.ok) {
+        const data: unknown = await response.json();
+        const errorData = data as { error?: string };
+        setErrorMsg(errorData.error || "ไม่สามารถลบบัญชีนิสิตได้");
+        return;
       }
+
+      setStudents((current) =>
+        current.filter((student) => student.studentId !== pendingDelete)
+      );
+      setPendingDelete(null);
+      router.refresh();
     } catch {
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+      setErrorMsg("ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองอีกครั้ง");
     } finally {
-      setDeletingId(null);
+      setIsDeleting(false);
     }
   };
 
-  const handleCopySingle = (studentId: string, pass: string | null): void => {
-    if (!pass) return;
-    navigator.clipboard.writeText(`User: ${studentId}\nPassword: ${pass}`).then(() => {
+  const handleCopySingle = async (
+    studentId: string,
+    password: string | null
+  ): Promise<void> => {
+    if (!password) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(
+        `User: ${studentId}\nPassword: ${password}`
+      );
       setCopiedId(studentId);
-      setTimeout(() => setCopiedId(null), 2000);
-    });
+      window.setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      setErrorMsg("เบราว์เซอร์ไม่อนุญาตให้คัดลอก กรุณาคัดลอกด้วยตนเอง");
+    }
   };
 
   const handleExportCsv = (): void => {
-    if (filteredStudents.length === 0) return;
+    if (filteredStudents.length === 0) {
+      return;
+    }
 
     const headers = "Student ID,Password,Created At\n";
     const rows = filteredStudents
-      .map((s) => `"${s.studentId}","${s.tempPassword ?? ""}","${s.createdAt}"`)
+      .map(
+        (student) =>
+          `"${student.studentId}","${student.tempPassword ?? ""}","${student.createdAt}"`
+      )
       .join("\n");
-
-    const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([headers + rows], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
+
     link.href = url;
-    link.setAttribute("download", `coop_student_accounts_${Date.now()}.csv`);
+    link.download = `coop_student_accounts_${Date.now()}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -81,117 +128,150 @@ export function StudentTable({ initialStudents }: StudentTableProps): React.JSX.
   };
 
   return (
-    <div className="space-y-4">
-      {/* Controls Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex-1 max-w-sm">
-          <input
-            type="text"
-            placeholder="ค้นหารหัสนิสิต..."
-            value={searchTerm}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setSearchTerm(e.target.value)
-            }
-            className="w-full text-sm rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:border-blue-500 font-mono"
-          />
-        </div>
+    <div className="grid gap-6">
+      {errorMsg && !pendingDelete ? (
+        <Alert tone="danger">{errorMsg}</Alert>
+      ) : null}
 
+      <div className="flex flex-col gap-3 border-b border-line pb-5 md:flex-row md:items-center md:justify-between">
+        <TextInput
+          label="ค้นหารหัสนิสิต"
+          hideLabel
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          leadingIcon={<IconSearch />}
+          placeholder="ค้นหารหัสนิสิต"
+          inputMode="numeric"
+          mono
+          className="md:w-[20rem]"
+        />
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setRevealPasswords((prev) => !prev)}
-            className="px-3 py-2 text-xs font-medium border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg transition-colors"
+          <Button
+            icon={revealPasswords ? <IconEyeOff /> : <IconEye />}
+            onClick={() => setRevealPasswords((current) => !current)}
           >
             {revealPasswords ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
-          </button>
-
-          <button
-            type="button"
+          </Button>
+          <Button
+            icon={<IconDownload />}
             onClick={handleExportCsv}
-            className="px-3 py-2 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg transition-colors"
+            disabled={filteredStudents.length === 0}
           >
-            ดาวน์โหลด CSV
-          </button>
-
-          <Link
-            href="/students/import"
-            className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
-          >
-            + นำเข้านิสิตและสุ่มรหัสผ่าน
-          </Link>
+            ส่งออก CSV
+          </Button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="overflow-hidden border border-line bg-surface">
         {filteredStudents.length === 0 ? (
-          <div className="p-12 text-center text-slate-500">
-            <p className="text-base font-medium">ยังไม่มีบัญชีนิสิตในระบบ</p>
-            <p className="text-sm mt-1">
+          <div className="grid justify-items-center gap-3 px-6 py-20 text-center">
+            <span className="text-2xl text-ink-faint">
+              <IconUsers />
+            </span>
+            <strong className="display text-lg text-ink">
               {students.length === 0
-                ? "นำเข้านิสิตโดยใส่รหัสนิสิต ระบบจะสุ่ม Password ให้อัตโนมัติ"
-                : "ไม่พบรหัสนิสิตที่ตรงกับการค้นหา"}
-            </p>
-            {students.length === 0 && (
-              <Link
+                ? "ยังไม่มีบัญชีนิสิต"
+                : "ไม่พบรหัสนิสิตที่ค้นหา"}
+            </strong>
+            <span className="max-w-[38ch] text-sm text-ink-muted">
+              {students.length === 0
+                ? "นำเข้ารหัสนิสิตเพื่อให้ระบบสร้าง User และ Password"
+                : "ตรวจสอบรหัสนิสิตแล้วลองค้นหาอีกครั้ง"}
+            </span>
+            {students.length === 0 ? (
+              <LinkButton
                 href="/students/import"
-                className="inline-block mt-4 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700"
+                variant="primary"
+                icon={<IconUpload />}
+                className="mt-2"
               >
-                + นำเข้านิสิตคนแรก
-              </Link>
-            )}
+                นำเข้านิสิต
+              </LinkButton>
+            ) : null}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+          <div className="md:overflow-x-auto">
+            <table className="data-table">
+              <caption className="sr-only">
+                รายการรหัสนิสิต รหัสผ่านชั่วคราว และวันที่สร้างบัญชี
+              </caption>
+              <thead>
                 <tr>
-                  <th className="py-3 px-4">ลำดับ</th>
-                  <th className="py-3 px-4">รหัสนิสิต (User)</th>
-                  <th className="py-3 px-4">รหัสผ่านที่สุ่มได้ (Password)</th>
-                  <th className="py-3 px-4">วันที่นำเข้า</th>
-                  <th className="py-3 px-4 text-right">การจัดการ</th>
+                  <th scope="col">รหัสนิสิต</th>
+                  <th scope="col">รหัสผ่าน</th>
+                  <th scope="col">วันที่สร้างบัญชี</th>
+                  <th scope="col" aria-label="การจัดการ" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-mono">
-                {filteredStudents.map((student, index) => (
-                  <tr key={student.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3 px-4 text-slate-400 font-sans">{index + 1}</td>
-                    <td className="py-3 px-4 font-bold text-slate-900 text-base">
-                      {student.studentId}
+              <tbody>
+                {filteredStudents.map((student) => (
+                  <tr key={student.id}>
+                    <td data-label="รหัสนิสิต">
+                      <span className="font-mono text-[13.5px] font-medium tracking-[0.02em] text-ink">
+                        {student.studentId}
+                      </span>
                     </td>
-                    <td className="py-3 px-4 text-sm">
+                    <td data-label="รหัสผ่าน">
                       {student.tempPassword ? (
-                        revealPasswords ? (
-                          <span className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded font-bold tracking-wider">
-                            {student.tempPassword}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</span>
-                        )
+                        <span className="font-mono text-[13.5px] tracking-[0.02em] text-ink-muted">
+                          {revealPasswords ? student.tempPassword : "••••••••"}
+                        </span>
                       ) : (
-                        <span className="text-slate-400 italic font-sans text-xs">เข้ารหัสแล้ว</span>
+                        <span className="text-[13px] text-ink-faint">
+                          ไม่มีรหัสผ่านชั่วคราว
+                        </span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-slate-500 font-sans text-xs">
-                      {new Date(student.createdAt).toLocaleDateString("th-TH")}
+                    <td data-label="วันที่สร้าง">
+                      <span className="text-[13px] whitespace-nowrap text-ink-muted">
+                        {new Date(student.createdAt).toLocaleDateString(
+                          "th-TH",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          }
+                        )}
+                      </span>
                     </td>
-                    <td className="py-3 px-4 text-right space-x-2 font-sans">
-                      <button
-                        type="button"
-                        onClick={() => handleCopySingle(student.studentId, student.tempPassword)}
-                        className="px-2.5 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors"
-                      >
-                        {copiedId === student.studentId ? "คัดลอกแล้ว!" : "คัดลอก"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={deletingId === student.studentId}
-                        onClick={() => handleDelete(student.studentId)}
-                        className="px-2.5 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                      >
-                        {deletingId === student.studentId ? "..." : "ลบ"}
-                      </button>
+                    <td data-actions>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={
+                            copiedId === student.studentId ? (
+                              <IconCheck />
+                            ) : (
+                              <IconCopy />
+                            )
+                          }
+                          disabled={!student.tempPassword}
+                          aria-label={`คัดลอกบัญชี ${student.studentId}`}
+                          onClick={() =>
+                            handleCopySingle(
+                              student.studentId,
+                              student.tempPassword
+                            )
+                          }
+                        >
+                          {copiedId === student.studentId
+                            ? "คัดลอกแล้ว"
+                            : "คัดลอก"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={<IconTrash />}
+                          aria-label={`ลบบัญชี ${student.studentId}`}
+                          onClick={() => {
+                            setErrorMsg(null);
+                            setPendingDelete(student.studentId);
+                          }}
+                        >
+                          ลบ
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -200,6 +280,29 @@ export function StudentTable({ initialStudents }: StudentTableProps): React.JSX.
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="ลบบัญชีนิสิต"
+        description={
+          <>
+            ต้องการลบบัญชี{" "}
+            <span className="font-mono text-ink">{pendingDelete}</span>{" "}
+            ใช่หรือไม่ นิสิตจะไม่สามารถเข้าสู่ระบบด้วยบัญชีนี้ได้อีก
+          </>
+        }
+        confirmLabel="ลบบัญชี"
+        pendingLabel="กำลังลบ..."
+        destructive
+        pending={isDeleting}
+        errorMessage={errorMsg}
+        confirmIcon={<IconTrash />}
+        onConfirm={handleDelete}
+        onCancel={() => {
+          setPendingDelete(null);
+          setErrorMsg(null);
+        }}
+      />
     </div>
   );
 }

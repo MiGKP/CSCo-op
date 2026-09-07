@@ -1,12 +1,58 @@
 "use client";
 
-import React, { Suspense, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import React, { Suspense, useState, useTransition } from "react";
+import {
+  IconArrowRight,
+  IconEye,
+  IconEyeOff,
+  IconKey,
+  IconUser,
+} from "@/components/icons";
+import { ThemeSelect } from "@/components/ThemeSelect";
+import { Button } from "@/components/ui/button";
+import { Alert, Spinner } from "@/components/ui/feedback";
+import { TextInput } from "@/components/ui/form";
+
+interface Highlight {
+  title: string;
+  detail: string;
+}
+
+const HIGHLIGHTS: Highlight[] = [
+  {
+    title: "ข้อมูลบริษัท",
+    detail: "รวบรวมตำแหน่งและที่อยู่ที่รุ่นพี่เคยยื่น ไว้เป็นรายการกลาง",
+  },
+  {
+    title: "บัญชีนิสิต",
+    detail: "สร้าง User และ Password พร้อมส่งออกเป็นไฟล์ CSV",
+  },
+  {
+    title: "ส่งต่ออัตโนมัติ",
+    detail: "เว็บฝั่งนิสิตอ่านข้อมูลผ่าน API โดยไม่ต้องคัดลอกซ้ำ",
+  },
+];
+
+function getSafeRedirectPath(value: string | null): string {
+  if (
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\") ||
+    /[\u0000-\u001F]/u.test(value)
+  ) {
+    return "/";
+  }
+
+  return value;
+}
 
 function LoginForm(): React.JSX.Element {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("from") || "/";
+  const redirectTo = getSafeRedirectPath(searchParams.get("from"));
+  const isDevelopment = process.env.NODE_ENV === "development";
 
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -20,18 +66,18 @@ function LoginForm(): React.JSX.Element {
     setErrorMsg(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
     setErrorMsg(null);
 
     if (!username.trim() || !password.trim()) {
-      setErrorMsg("กรุณากรอกชื่อผู้ใช้และรหัสผ่าน");
+      setErrorMsg("กรุณากรอกชื่อผู้ใช้และรหัสผ่านให้ครบ");
       return;
     }
 
     startTransition(async () => {
       try {
-        const res = await fetch("/api/auth/instructor/login", {
+        const response = await fetch("/api/auth/instructor/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -40,131 +86,166 @@ function LoginForm(): React.JSX.Element {
           }),
         });
 
-        const data: unknown = await res.json();
+        const data: unknown = await response.json();
 
-        if (!res.ok) {
-          const errData = data as { error?: string };
-          setErrorMsg(errData.error || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+        if (!response.ok) {
+          const errorData = data as { error?: string };
+          setErrorMsg(errorData.error || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
           return;
         }
 
         router.push(redirectTo);
         router.refresh();
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการเชื่อมต่อ";
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองอีกครั้ง";
         setErrorMsg(message);
       }
     });
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
-      {errorMsg && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 flex items-start space-x-2">
-          <span className="font-bold">&#9888;</span>
-          <span>{errorMsg}</span>
-        </div>
-      )}
+    <form onSubmit={handleSubmit} className="grid gap-5">
+      {errorMsg ? (
+        <Alert tone="danger" title="เข้าสู่ระบบไม่สำเร็จ">
+          {errorMsg}
+        </Alert>
+      ) : null}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label
-            htmlFor="username"
-            className="block text-xs font-semibold uppercase text-slate-600 mb-1"
-          >
-            ชื่อผู้ใช้ (Username)
-          </label>
-          <input
-            id="username"
-            type="text"
-            autoComplete="username"
-            required
-            value={username}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
-            placeholder="เช่น admin"
-            className="w-full text-sm rounded-lg border border-slate-300 px-3 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      <TextInput
+        label="ชื่อผู้ใช้"
+        required
+        value={username}
+        onChange={(event) => setUsername(event.target.value)}
+        leadingIcon={<IconUser />}
+        autoComplete="username"
+        placeholder="กรอกชื่อผู้ใช้"
+        disabled={isPending}
+      />
+
+      <TextInput
+        label="รหัสผ่าน"
+        required
+        type={showPassword ? "text" : "password"}
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        leadingIcon={<IconKey />}
+        trailing={
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+            icon={showPassword ? <IconEyeOff /> : <IconEye />}
+            onClick={() => setShowPassword((current) => !current)}
           />
-        </div>
+        }
+        autoComplete="current-password"
+        placeholder="กรอกรหัสผ่าน"
+        disabled={isPending}
+      />
 
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label
-              htmlFor="password"
-              className="block text-xs font-semibold uppercase text-slate-600"
-            >
-              รหัสผ่าน (Password)
-            </label>
-            <button
-              type="button"
-              onClick={() => setShowPassword((prev) => !prev)}
-              className="text-xs text-slate-400 hover:text-slate-600"
-            >
-              {showPassword ? "ซ่อน" : "แสดง"}
-            </button>
+      <Button
+        type="submit"
+        variant="primary"
+        size="lg"
+        loading={isPending}
+        iconAfter={<IconArrowRight />}
+        className="mt-1 w-full"
+      >
+        {isPending ? "กำลังตรวจสอบ..." : "เข้าสู่ระบบ"}
+      </Button>
+
+      {isDevelopment ? (
+        <div className="mt-2 flex items-center justify-between gap-4 border border-line bg-raised px-4 py-3">
+          <div className="min-w-0">
+            <strong className="block text-[13px] font-medium text-ink">
+              บัญชีทดสอบสำหรับเครื่องนี้
+            </strong>
+            <span className="block font-mono text-xs text-ink-muted">
+              admin / coop2026pass
+            </span>
           </div>
-          <input
-            id="password"
-            type={showPassword ? "text" : "password"}
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-            placeholder="กรอกรหัสผ่าน"
-            className="w-full text-sm rounded-lg border border-slate-300 px-3 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-          />
+          <Button variant="secondary" size="sm" onClick={handleFillDemo}>
+            กรอกให้
+          </Button>
         </div>
-
-        <button
-          type="submit"
-          disabled={isPending}
-          className="w-full py-2.5 bg-blue-900 hover:bg-blue-800 disabled:bg-slate-300 text-white font-medium text-sm rounded-lg shadow-sm transition-colors flex items-center justify-center space-x-2 mt-2"
-        >
-          {isPending ? <span>กำลังเข้าสู่ระบบ...</span> : <span>เข้าสู่ระบบ</span>}
-        </button>
-      </form>
-
-      {/* Preset Credentials Box */}
-      <div className="pt-4 border-t border-slate-100 text-xs text-slate-500 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-slate-700">บัญชีเริ่มต้นสำหรับทดสอบ:</span>
-          <button
-            type="button"
-            onClick={handleFillDemo}
-            className="text-blue-600 hover:text-blue-800 hover:underline font-semibold"
-          >
-            คลิกใส่ข้อมูลอัตโนมัติ
-          </button>
-        </div>
-        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-mono text-[11px] text-slate-700 flex justify-between">
-          <span>User: <strong>admin</strong></span>
-          <span>Pass: <strong>coop2026pass</strong></span>
-        </div>
-      </div>
-    </div>
+      ) : null}
+    </form>
   );
 }
 
 export default function InstructorLoginPage(): React.JSX.Element {
   return (
-    <div className="min-h-[75vh] flex items-center justify-center py-6 px-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Header Branding */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-900 text-white shadow-md mb-2">
-            <span className="font-bold text-xl font-mono">CS</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            เข้าสู่ระบบสำหรับอาจารย์
-          </h1>
-          <p className="text-xs text-slate-500">
-            ระบบจัดการข้อมูลการฝึกงานและบัญชีผู้ใช้นิสิต (CS Co-op Portal)
-          </p>
+    <div className="relative min-h-dvh lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(27rem,0.9fr)]">
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeSelect />
+      </div>
+      <section
+        aria-label="ข้อมูลระบบ"
+        className="hidden flex-col justify-between border-r border-line bg-accent-soft px-14 py-14 lg:flex"
+      >
+        <div>
+          <p className="eyebrow text-accent">ภาควิชาวิทยาการคอมพิวเตอร์</p>
+          <p className="display mt-2 text-[20px] text-ink">Co-op Portal</p>
         </div>
 
-        <Suspense fallback={<div className="p-8 text-center text-sm text-slate-400">กำลังโหลด...</div>}>
-          <LoginForm />
-        </Suspense>
-      </div>
+        <div className="max-w-[34rem]">
+          <h1 className="display text-[clamp(2.5rem,4.4vw,3.75rem)] text-ink">
+            จัดการข้อมูล
+            <br />
+            สหกิจศึกษา
+            <br />
+            ไว้ในที่เดียว
+          </h1>
+          <div className="mt-9 grid gap-0">
+            {HIGHLIGHTS.map((item) => (
+              <div
+                key={item.title}
+                className="grid gap-1 border-t border-line py-4 last:border-b"
+              >
+                <strong className="text-[14px] font-medium text-ink">
+                  {item.title}
+                </strong>
+                <span className="text-[13px] text-ink-muted">
+                  {item.detail}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <p className="text-xs text-ink-faint">
+          พื้นที่จัดการข้อมูลสำหรับอาจารย์ผู้ดูแลสหกิจศึกษาเท่านั้น
+        </p>
+      </section>
+
+      <section
+        aria-label="เข้าสู่ระบบ"
+        className="flex min-h-dvh items-center justify-center border-line bg-surface px-6 py-14 sm:px-10 lg:px-14"
+      >
+        <div className="w-full max-w-[24rem]">
+          <p className="eyebrow text-accent lg:hidden">
+            ภาควิชาวิทยาการคอมพิวเตอร์
+          </p>
+          <h2 className="display mt-2 text-[28px] text-ink">ยินดีต้อนรับ</h2>
+          <p className="mt-2 mb-9 text-sm text-ink-muted">
+            เข้าสู่ระบบด้วยบัญชีอาจารย์เพื่อจัดการข้อมูล
+          </p>
+
+          <Suspense
+            fallback={
+              <div className="grid min-h-52 place-items-center">
+                <Spinner label="กำลังเตรียมแบบฟอร์ม" />
+              </div>
+            }
+          >
+            <LoginForm />
+          </Suspense>
+        </div>
+      </section>
     </div>
   );
 }

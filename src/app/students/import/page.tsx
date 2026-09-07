@@ -1,7 +1,17 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import Link from "next/link";
+import { PageHeader } from "@/components/PageHeader";
+import {
+  IconArrowLeft,
+  IconCheck,
+  IconCopy,
+  IconDownload,
+  IconUpload,
+} from "@/components/icons";
+import { Button, LinkButton } from "@/components/ui/button";
+import { Alert, Badge } from "@/components/ui/feedback";
+import { TextArea } from "@/components/ui/form";
 import { parseAndValidateStudentIds } from "@/lib/validators";
 
 interface CreatedStudent {
@@ -22,26 +32,54 @@ interface ImportApiErrorResponse {
   code: string;
 }
 
+interface ImportStep {
+  title: string;
+  detail: string;
+}
+
+const IMPORT_STEPS: ImportStep[] = [
+  {
+    title: "ตรวจสอบรหัสนิสิต",
+    detail: "ใช้ตัวเลขเท่านั้น 8-15 หลัก ไม่ต้องใส่คำนำหน้าหรือชื่อ",
+  },
+  {
+    title: "บันทึกรหัสผ่านทันที",
+    detail: "ดาวน์โหลด CSV หลังสร้างบัญชี เพราะรหัสผ่านแสดงครั้งนี้ครั้งเดียว",
+  },
+  {
+    title: "รายการซ้ำจะถูกข้าม",
+    detail: "ระบบไม่เปลี่ยนรหัสผ่านของบัญชีที่มีอยู่แล้ว",
+  },
+];
+
 export default function StudentImportPage(): React.JSX.Element {
   const [inputText, setInputText] = useState<string>("");
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [copied, setCopied] = useState<boolean>(false);
-  const [importResult, setImportResult] = useState<ImportApiSuccessResponse | null>(null);
+  const [copiedAll, setCopiedAll] = useState<boolean>(false);
+  const [copiedStudentId, setCopiedStudentId] = useState<string | null>(null);
+  const [importResult, setImportResult] =
+    useState<ImportApiSuccessResponse | null>(null);
 
-  // Parse preview on the fly
   const preview = parseAndValidateStudentIds(inputText);
+  const hasOnlyInvalidInput =
+    inputText.trim().length > 0 && preview.validIds.length === 0;
 
   const handleInsertSample = (): void => {
     setInputText("66011212222\n66011212223\n66011212224\n66011212225");
+    setErrorMsg(null);
   };
 
-  const handleImportSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
+  const handleImportSubmit = (
+    event: React.FormEvent<HTMLFormElement>
+  ): void => {
+    event.preventDefault();
     setErrorMsg(null);
 
     if (preview.validIds.length === 0) {
-      setErrorMsg("กรุณาระบุรหัสนิสิตที่ถูกต้องอย่างน้อย 1 รายการ (ตัวเลข 8-15 หลัก เช่น 66011212222)");
+      setErrorMsg(
+        "กรุณาระบุรหัสนิสิตที่ถูกต้องอย่างน้อย 1 รายการ (ตัวเลข 8-15 หลัก)"
+      );
       return;
     }
 
@@ -49,56 +87,81 @@ export default function StudentImportPage(): React.JSX.Element {
       try {
         const response = await fetch("/api/students/import", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ rawInput: inputText }),
         });
-
         const data: unknown = await response.json();
 
         if (!response.ok) {
-          const errData = data as ImportApiErrorResponse;
-          setErrorMsg(errData.error || "เกิดข้อผิดพลาดในการนำเข้า");
+          const errorData = data as ImportApiErrorResponse;
+          setErrorMsg(errorData.error || "เกิดข้อผิดพลาดในการนำเข้า");
           return;
         }
 
-        const successData = data as ImportApiSuccessResponse;
-        setImportResult(successData);
+        setImportResult(data as ImportApiSuccessResponse);
         setInputText("");
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการเชื่อมต่อ";
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "เกิดข้อผิดพลาดในการเชื่อมต่อ";
         setErrorMsg(message);
       }
     });
   };
 
-  const copyCredentials = (): void => {
-    if (!importResult || importResult.created.length === 0) return;
+  const copyAllCredentials = async (): Promise<void> => {
+    if (!importResult || importResult.created.length === 0) {
+      return;
+    }
 
     const text = importResult.created
-      .map((item) => `รหัสนิสิต: ${item.studentId}\tรหัสผ่าน: ${item.tempPassword}`)
+      .map(
+        (item) =>
+          `รหัสนิสิต: ${item.studentId}\tรหัสผ่าน: ${item.tempPassword}`
+      )
       .join("\n");
 
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    });
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedAll(true);
+      window.setTimeout(() => setCopiedAll(false), 2500);
+    } catch {
+      setErrorMsg("เบราว์เซอร์ไม่อนุญาตให้คัดลอก กรุณาดาวน์โหลด CSV แทน");
+    }
+  };
+
+  const copySingleCredential = async (
+    credential: CreatedStudent
+  ): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(
+        `User: ${credential.studentId}\nPassword: ${credential.tempPassword}`
+      );
+      setCopiedStudentId(credential.studentId);
+      window.setTimeout(() => setCopiedStudentId(null), 2000);
+    } catch {
+      setErrorMsg("เบราว์เซอร์ไม่อนุญาตให้คัดลอก กรุณาดาวน์โหลด CSV แทน");
+    }
   };
 
   const downloadCsv = (): void => {
-    if (!importResult || importResult.created.length === 0) return;
+    if (!importResult || importResult.created.length === 0) {
+      return;
+    }
 
     const headers = "Student ID,Temporary Password\n";
     const rows = importResult.created
       .map((item) => `"${item.studentId}","${item.tempPassword}"`)
       .join("\n");
-
-    const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([headers + rows], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
+
     link.href = url;
-    link.setAttribute("download", `coop_students_credentials_${Date.now()}.csv`);
+    link.download = `coop_students_credentials_${Date.now()}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -106,152 +169,222 @@ export default function StudentImportPage(): React.JSX.Element {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">
-            นำเข้านิสิตเข้าระบบฝึกสหกิจศึกษา
-          </h1>
-          <p className="text-sm text-slate-600 mt-1">
-            พิมพ์หรือวางรหัสนิสิต (ตัวเลข เช่น 66011212222) ระบบจะทำการสุ่มรหัสผ่าน (Random Password) ให้อัตโนมัติ
-          </p>
-        </div>
-        <Link
-          href="/students"
-          className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+    <div className="grid gap-8">
+      <PageHeader
+        eyebrow="สร้างบัญชี"
+        title="นำเข้าบัญชีนิสิต"
+        description="วางรหัสนิสิตเป็นรายการ ระบบจะตรวจรูปแบบและสร้างรหัสผ่านแบบสุ่มให้อัตโนมัติ"
+        actions={
+          <LinkButton href="/students" icon={<IconArrowLeft />}>
+            กลับไปบัญชีนิสิต
+          </LinkButton>
+        }
+      />
+
+      {errorMsg ? (
+        <Alert tone="danger" title="นำเข้าไม่สำเร็จ">
+          {errorMsg}
+        </Alert>
+      ) : null}
+
+      <section className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(17rem,1fr)] lg:gap-12">
+        <form
+          onSubmit={handleImportSubmit}
+          className="grid gap-5 border border-line bg-surface p-6 sm:p-8"
         >
-          &larr; กลับไปหน้ารายชื่อนิสิต
-        </Link>
-      </div>
-
-      {errorMsg && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          <strong>แจ้งเตือน:</strong> {errorMsg}
-        </div>
-      )}
-
-      {/* Input Form Card */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <form onSubmit={handleImportSubmit} className="space-y-4">
-          <div className="flex justify-between items-center">
-            <label htmlFor="studentInput" className="block text-sm font-semibold text-slate-700">
-              รหัสนิสิต (Student IDs)
-            </label>
-            <button
-              type="button"
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-5">
+            <div>
+              <p className="eyebrow text-accent">ข้อมูลนำเข้า</p>
+              <h2 className="display mt-1.5 text-xl text-ink">รหัสนิสิต</h2>
+              <p className="mt-1.5 text-[13px] text-ink-muted">
+                หนึ่งรหัสต่อหนึ่งบรรทัด รองรับตัวเลข 8-15 หลัก
+              </p>
+            </div>
+            <Button
+              variant="quiet"
+              size="sm"
               onClick={handleInsertSample}
-              className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+              disabled={isPending}
             >
-              + ใส่ตัวอย่างข้อมูล
-            </button>
+              ใส่ข้อมูลตัวอย่าง
+            </Button>
           </div>
 
-          <textarea
-            id="studentInput"
-            rows={6}
+          <TextArea
+            label="รายการที่ต้องการนำเข้า"
+            rows={10}
+            mono
             value={inputText}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInputText(e.target.value)}
-            placeholder="เช่น&#10;66011212222&#10;66011212223&#10;66011212224"
-            className="w-full rounded-lg border border-slate-300 p-3 font-mono text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            onChange={(event) => setInputText(event.target.value)}
+            placeholder={"66011212222\n66011212223\n66011212224"}
+            disabled={isPending}
+            error={
+              hasOnlyInvalidInput
+                ? "ยังไม่พบรหัสนิสิตที่อยู่ในรูปแบบที่ถูกต้อง"
+                : undefined
+            }
           />
 
-          {inputText.trim().length > 0 && (
-            <div className="flex flex-wrap gap-4 text-xs">
-              <span className="text-emerald-700 font-medium">
-                &#10003; ตรวจพบรหัสนิสิตถูกต้อง: {preview.validIds.length} รหัส
-              </span>
-              {preview.invalidLines.length > 0 && (
-                <span className="text-amber-700 font-medium">
-                  &#9888; รูปแบบไม่ถูกต้อง (ข้าม): {preview.invalidLines.length} รายการ ({preview.invalidLines.slice(0, 3).join(", ")}...)
-                </span>
-              )}
+          <div
+            aria-live="polite"
+            className="grid gap-px border border-line bg-line sm:grid-cols-2"
+          >
+            <div className="flex items-baseline justify-between gap-3 bg-surface px-4 py-3">
+              <span className="text-[13px] text-ink-muted">พร้อมนำเข้า</span>
+              <strong className="font-mono text-lg text-ink">
+                {preview.validIds.length}
+              </strong>
             </div>
-          )}
-
-          <div className="pt-2 flex justify-end">
-            <button
-              type="submit"
-              disabled={isPending || preview.validIds.length === 0}
-              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-medium text-sm rounded-lg shadow-sm transition-colors flex items-center space-x-2"
-            >
-              {isPending ? (
-                <span>กำลังนำเข้าและสร้างรหัสผ่าน...</span>
-              ) : (
-                <span>นำเข้า {preview.validIds.length > 0 ? `${preview.validIds.length} คน` : ""} & สุ่มรหัสผ่าน</span>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* Import Result Card */}
-      {importResult && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100">
-            <div>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                นำเข้าสำเร็จ
+            <div className="flex items-baseline justify-between gap-3 bg-surface px-4 py-3">
+              <span className="text-[13px] text-ink-muted">
+                รูปแบบไม่ถูกต้อง
               </span>
-              <h2 className="text-lg font-bold text-slate-800 mt-1">
-                สร้างข้อมูลนิสิตใหม่จำนวน {importResult.totalImported} คน
+              <strong
+                className={`font-mono text-lg ${
+                  preview.invalidLines.length > 0 ? "text-warning" : "text-ink"
+                }`}
+              >
+                {preview.invalidLines.length}
+              </strong>
+            </div>
+          </div>
+
+          {preview.invalidLines.length > 0 ? (
+            <Alert tone="warning">
+              ระบบจะข้าม: {preview.invalidLines.slice(0, 4).join(", ")}
+              {preview.invalidLines.length > 4 ? " และรายการอื่น" : ""}
+            </Alert>
+          ) : null}
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            icon={<IconUpload />}
+            loading={isPending}
+            disabled={preview.validIds.length === 0}
+          >
+            {isPending
+              ? "กำลังสร้างบัญชี..."
+              : `นำเข้า ${preview.validIds.length} บัญชี`}
+          </Button>
+        </form>
+
+        <aside className="lg:sticky lg:top-8">
+          <p className="eyebrow text-accent">ก่อนนำเข้า</p>
+          <h2 className="display mt-1.5 text-xl text-ink">สิ่งที่ควรรู้</h2>
+          <ol className="mt-6 grid gap-0">
+            {IMPORT_STEPS.map((step, index) => (
+              <li
+                key={step.title}
+                className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 border-t border-line py-4 last:border-b"
+              >
+                <span className="display pt-0.5 text-[14px] text-accent/70">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <div>
+                  <strong className="text-[13.5px] font-medium text-ink">
+                    {step.title}
+                  </strong>
+                  <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
+                    {step.detail}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </aside>
+      </section>
+
+      {importResult ? (
+        <section
+          aria-live="polite"
+          className="grid gap-6 border border-line bg-surface p-6 sm:p-8"
+        >
+          <div className="flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Badge tone="success" icon={<IconCheck />}>
+                นำเข้าสำเร็จ
+              </Badge>
+              <h2 className="display mt-3 text-xl text-ink">
+                สร้างบัญชีใหม่ {importResult.totalImported} บัญชี
               </h2>
             </div>
-            {importResult.created.length > 0 && (
-              <div className="flex space-x-2">
-                <button
-                  type="button"
-                  onClick={copyCredentials}
-                  className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors"
+            {importResult.created.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  icon={copiedAll ? <IconCheck /> : <IconCopy />}
+                  onClick={copyAllCredentials}
                 >
-                  {copied ? "คัดลอกแล้ว!" : "คัดลอกทั้งหมด"}
-                </button>
-                <button
-                  type="button"
+                  {copiedAll ? "คัดลอกแล้ว" : "คัดลอกทั้งหมด"}
+                </Button>
+                <Button
+                  variant="primary"
+                  icon={<IconDownload />}
                   onClick={downloadCsv}
-                  className="px-3 py-1.5 text-xs font-medium bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors"
                 >
                   ดาวน์โหลด CSV
-                </button>
+                </Button>
               </div>
-            )}
+            ) : null}
           </div>
 
-          {importResult.skipped.length > 0 && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-              <strong>มีรหัสนิสิตที่มีในระบบอยู่แล้ว (ข้ามการสร้างใหม่):</strong>{" "}
-              {importResult.skipped.join(", ")}
-            </div>
-          )}
+          {importResult.skipped.length > 0 ? (
+            <Alert tone="warning">
+              ข้ามบัญชีที่มีอยู่แล้ว: {importResult.skipped.join(", ")}
+            </Alert>
+          ) : null}
 
           {importResult.created.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+            <div className="overflow-hidden border border-line md:overflow-x-auto">
+              <table className="data-table">
+                <caption className="sr-only">
+                  บัญชีนิสิตและรหัสผ่านที่สร้างจากการนำเข้าครั้งล่าสุด
+                </caption>
+                <thead>
                   <tr>
-                    <th className="py-2.5 px-4">ลำดับ</th>
-                    <th className="py-2.5 px-4">รหัสนิสิต</th>
-                    <th className="py-2.5 px-4">รหัสผ่านที่สุ่มได้ (Random Password)</th>
-                    <th className="py-2.5 px-4 text-right">การจัดการ</th>
+                    <th scope="col">ลำดับ</th>
+                    <th scope="col">รหัสนิสิต</th>
+                    <th scope="col">รหัสผ่านที่สร้าง</th>
+                    <th scope="col" aria-label="คัดลอก" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-mono">
+                <tbody>
                   {importResult.created.map((item, index) => (
-                    <tr key={item.studentId} className="hover:bg-slate-50">
-                      <td className="py-2.5 px-4 text-slate-400 font-sans">{index + 1}</td>
-                      <td className="py-2.5 px-4 font-bold text-slate-900">{item.studentId}</td>
-                      <td className="py-2.5 px-4 text-emerald-700 font-bold tracking-wider">
-                        {item.tempPassword}
+                    <tr key={item.studentId}>
+                      <td data-label="ลำดับ">
+                        <span className="font-mono text-[13px] text-ink-faint">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
                       </td>
-                      <td className="py-2.5 px-4 text-right font-sans">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(`User: ${item.studentId}\nPassword: ${item.tempPassword}`);
-                          }}
-                          className="inline-block px-3 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-medium transition-colors"
+                      <td data-label="รหัสนิสิต">
+                        <span className="font-mono text-[13.5px] font-medium tracking-[0.02em] text-ink">
+                          {item.studentId}
+                        </span>
+                      </td>
+                      <td data-label="รหัสผ่าน">
+                        <span className="font-mono text-[13.5px] tracking-[0.02em] text-success">
+                          {item.tempPassword}
+                        </span>
+                      </td>
+                      <td data-actions>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={
+                            copiedStudentId === item.studentId ? (
+                              <IconCheck />
+                            ) : (
+                              <IconCopy />
+                            )
+                          }
+                          aria-label={`คัดลอกบัญชี ${item.studentId}`}
+                          onClick={() => copySingleCredential(item)}
                         >
-                          คัดลอก User/Pass
-                        </button>
+                          {copiedStudentId === item.studentId
+                            ? "คัดลอกแล้ว"
+                            : "คัดลอก"}
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -259,22 +392,21 @@ export default function StudentImportPage(): React.JSX.Element {
               </table>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">ไม่มีนิสิตใหม่ที่ถูกนำเข้า</p>
+            <p className="px-2 py-8 text-center text-sm text-ink-muted">
+              ไม่มีบัญชีใหม่ รายการทั้งหมดมีอยู่ในระบบแล้ว
+            </p>
           )}
 
-          <div className="pt-2 flex justify-between items-center text-sm">
-            <span className="text-slate-500">
-              * รหัสผ่านนี้สามารถนำไปแจกจ่ายให้นิสิตใช้ล็อกอินในระบบของนิสิตได้
+          <div className="flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-[13px] text-ink-muted">
+              เก็บไฟล์รหัสผ่านในพื้นที่ปลอดภัย และส่งให้นิสิตโดยตรง
             </span>
-            <Link
-              href="/students"
-              className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium text-xs transition-colors"
-            >
-              ดูรายชื่อนิสิตทั้งหมด &rarr;
-            </Link>
+            <LinkButton href="/students" icon={<IconArrowLeft />}>
+              ดูบัญชีทั้งหมด
+            </LinkButton>
           </div>
-        </div>
-      )}
+        </section>
+      ) : null}
     </div>
   );
 }

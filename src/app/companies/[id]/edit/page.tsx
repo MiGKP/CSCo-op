@@ -1,6 +1,8 @@
 import React from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/PageHeader";
+import { IconArrowLeft } from "@/components/icons";
+import { LinkButton } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
 import { CompanyForm } from "../../CompanyForm";
 
@@ -26,23 +28,17 @@ export default async function EditCompanyPage({
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">
-            แก้ไขข้อมูลบริษัท: {company.name}
-          </h1>
-          <p className="text-sm text-slate-600 mt-1">
-            อัปเดตข้อมูลบริษัท ตำแหน่งงาน หรือรายละเอียด
-          </p>
-        </div>
-        <Link
-          href="/companies"
-          className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
-        >
-          &larr; กลับไปรายการบริษัท
-        </Link>
-      </div>
+    <div className="grid gap-8">
+      <PageHeader
+        eyebrow="แก้ไขรายการ"
+        title="แก้ไขข้อมูลบริษัท"
+        description={`อัปเดตข้อมูลของ ${company.name}`}
+        actions={
+          <LinkButton href="/companies" icon={<IconArrowLeft />}>
+            กลับไปรายการบริษัท
+          </LinkButton>
+        }
+      />
 
       <CompanyForm
         isEdit

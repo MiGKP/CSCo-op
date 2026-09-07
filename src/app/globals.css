@@ -1,13 +1,247 @@
 @import "tailwindcss";
 
+/* Theme is switched by a data attribute set before first paint (see layout.tsx),
+   not by prefers-color-scheme, so the dark variant has to follow that attribute. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Palette lives in plain custom properties so a single attribute swap re-themes
+   the app at runtime. `@theme inline` makes Tailwind emit var() references
+   instead of resolved values, which is what keeps that swap working. */
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --app-paper: #f7f8fa;
+  --app-surface: #ffffff;
+  --app-raised: #eef1f6;
+  --app-line: #e0e5ed;
+  --app-line-strong: #c5ced9;
+  --app-ink: #15181e;
+  --app-ink-muted: #5a6270;
+  --app-ink-faint: #87909f;
+  --app-accent: #1b4b8f;
+  --app-accent-ink: #123765;
+  --app-accent-soft: #e7eefa;
+  --app-primary: #1b4b8f;
+  --app-primary-hover: #143a70;
+  --app-primary-ink: #ffffff;
+  --app-danger: #a12e22;
+  --app-danger-soft: #fbeceb;
+  --app-success: #23694c;
+  --app-success-soft: #e9f4ef;
+  --app-warning: #8a5510;
+  --app-warning-soft: #fbf1e1;
+  --app-panel: #10243d;
+  --app-panel-line: #23446c;
+  --app-panel-ink: #dbe7f5;
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  min-height: 100vh;
+[data-theme="dark"] {
+  --app-paper: #0f1216;
+  --app-surface: #161a20;
+  --app-raised: #1e232b;
+  --app-line: #272d37;
+  --app-line-strong: #3a424f;
+  --app-ink: #edf1f7;
+  --app-ink-muted: #98a2b1;
+  --app-ink-faint: #6e7887;
+  --app-accent: #8ab4f0;
+  --app-accent-ink: #adcaf7;
+  --app-accent-soft: #16243b;
+  --app-primary: #2f6fbd;
+  --app-primary-hover: #3d80d2;
+  --app-primary-ink: #ffffff;
+  --app-danger: #e79a90;
+  --app-danger-soft: #2d1f1e;
+  --app-success: #7fc2a1;
+  --app-success-soft: #16271f;
+  --app-warning: #dcae63;
+  --app-warning-soft: #2a2317;
+  --app-panel: #0b1725;
+  --app-panel-line: #1f3a5c;
+  --app-panel-ink: #d3e1f2;
+}
+
+@theme inline {
+  --font-sans: var(--font-body), "Segoe UI", system-ui, sans-serif;
+  --font-serif: var(--font-display), Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-code), Consolas, "Courier New", monospace;
+
+  --color-paper: var(--app-paper);
+  --color-surface: var(--app-surface);
+  --color-raised: var(--app-raised);
+  --color-line: var(--app-line);
+  --color-line-strong: var(--app-line-strong);
+  --color-ink: var(--app-ink);
+  --color-ink-muted: var(--app-ink-muted);
+  --color-ink-faint: var(--app-ink-faint);
+  --color-accent: var(--app-accent);
+  --color-accent-ink: var(--app-accent-ink);
+  --color-accent-soft: var(--app-accent-soft);
+  --color-primary: var(--app-primary);
+  --color-primary-hover: var(--app-primary-hover);
+  --color-primary-ink: var(--app-primary-ink);
+  --color-danger: var(--app-danger);
+  --color-danger-soft: var(--app-danger-soft);
+  --color-success: var(--app-success);
+  --color-success-soft: var(--app-success-soft);
+  --color-warning: var(--app-warning);
+  --color-warning-soft: var(--app-warning-soft);
+  --color-panel: var(--app-panel);
+  --color-panel-line: var(--app-panel-line);
+  --color-panel-ink: var(--app-panel-ink);
+
+  /* Editorial detailing: near-square corners, hairline rules, no soft shadows. */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+
+  --text-eyebrow: 0.6875rem;
+  --text-eyebrow--line-height: 1rem;
+  --text-eyebrow--letter-spacing: 0.14em;
+}
+
+@layer base {
+  html {
+    background-color: var(--app-paper);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--app-paper);
+    color: var(--app-ink);
+    font-size: 15px;
+    line-height: 1.65;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--app-accent);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--app-accent-soft);
+    color: var(--app-ink);
+  }
+
+  ::placeholder {
+    color: var(--app-ink-faint);
+  }
+}
+
+@layer components {
+  /* Small caps eyebrow used above every page title. */
+  .eyebrow {
+    font-size: var(--text-eyebrow);
+    font-weight: 600;
+    letter-spacing: var(--text-eyebrow--letter-spacing);
+    line-height: var(--text-eyebrow--line-height);
+    text-transform: uppercase;
+    color: var(--app-ink-faint);
+  }
+
+  .display {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  /* Data tables: hairline rows on desktop, stacked records on small screens.
+     Kept in CSS because the stacked mode relies on ::before + attr(data-label). */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  .data-table thead th {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--app-line-strong);
+    color: var(--app-ink-faint);
+    font-size: var(--text-eyebrow);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .data-table tbody td {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--app-line);
+    vertical-align: top;
+  }
+
+  .data-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .data-table tbody tr {
+    transition: background-color 120ms ease;
+  }
+
+  .data-table tbody tr:hover {
+    background-color: var(--app-raised);
+  }
+
+  @media (max-width: 767px) {
+    .data-table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    .data-table tbody {
+      display: grid;
+      gap: 1px;
+      background-color: var(--app-line);
+    }
+
+    .data-table tbody tr {
+      display: grid;
+      gap: 8px;
+      padding: 16px 20px;
+      background-color: var(--app-surface);
+    }
+
+    .data-table tbody td {
+      display: grid;
+      grid-template-columns: minmax(6.5rem, 34%) minmax(0, 1fr);
+      gap: 12px;
+      padding: 0;
+      border: 0;
+    }
+
+    .data-table tbody td::before {
+      content: attr(data-label);
+      color: var(--app-ink-faint);
+      font-size: 12px;
+    }
+
+    .data-table tbody td[data-actions]::before {
+      display: none;
+    }
+
+    .data-table tbody td[data-actions] {
+      display: flex;
+      justify-content: flex-start;
+      margin-top: 4px;
+      padding-top: 12px;
+      border-top: 1px solid var(--app-line);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
 }

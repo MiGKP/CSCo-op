@@ -2,7 +2,7 @@
 
 ## Project Overview
 CS Co-op Instructor Portal (ระบบบริหารข้อมูลการฝึกสหกิจศึกษาภาควิชาวิทยาการคอมพิวเตอร์ สำหรับอาจารย์)
-Next.js 15 (App Router), TypeScript strict, Tailwind CSS, Prisma ORM, PostgreSQL (Neon ready) / SQLite local fallback.
+Next.js 16 (App Router), TypeScript strict, Tailwind CSS 4, Prisma ORM, PostgreSQL (Neon ready) / SQLite local fallback.
 
 ## Coding Standards
 1. Think before code (problem, simplest solution, edge cases).
