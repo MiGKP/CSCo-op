@@ -195,15 +195,6 @@ export function DashboardOverview({
               <IconArrowRight />
             </span>
           </Link>
-          <Link
-            href="/docs"
-            className="group mt-5 inline-flex items-center gap-2 text-[13px] font-medium text-accent no-underline"
-          >
-            อ่านวิธีเรียก API
-            <span className="transition-transform duration-150 group-hover:translate-x-0.5">
-              <IconArrowRight />
-            </span>
-          </Link>
         </div>
       </section>
     </div>

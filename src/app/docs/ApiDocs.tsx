@@ -102,36 +102,40 @@ function FieldRow({
   );
 }
 
-export function ApiDocs(): React.JSX.Element {
+interface ApiDocsProps {
+  apiToken: string;
+}
+
+export function ApiDocs({ apiToken }: ApiDocsProps): React.JSX.Element {
   const [origin, setOrigin] = useState<string>("https://your-app.vercel.app");
 
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
 
-  const tokenPlaceholder = "STUDENT_WEB_API_TOKEN";
+  const token = apiToken;
   const loginPath = `${origin}/api/v1/auth/login`;
   const companiesPath = `${origin}/api/v1/companies`;
   const companyDetailPath = `${origin}/api/v1/companies/{id}`;
 
   const curlLogin = `curl -X POST "${loginPath}" \\
-  -H "Authorization: Bearer ${tokenPlaceholder}" \\
+  -H "Authorization: Bearer ${token}" \\
   -H "Content-Type: application/json" \\
   -d "{\\"studentId\\":\\"66011212222\\",\\"password\\":\\"xxxxxxxx\\"}"`;
 
   const curlList = `curl "${companiesPath}" \\
-  -H "Authorization: Bearer ${tokenPlaceholder}"`;
+  -H "Authorization: Bearer ${token}"`;
 
   const curlSearch = `curl "${companiesPath}?search=Software&province=${encodeURIComponent("กรุงเทพมหานคร")}" \\
-  -H "Authorization: Bearer ${tokenPlaceholder}"`;
+  -H "Authorization: Bearer ${token}"`;
 
   const curlDetail = `curl "${origin}/api/v1/companies/REPLACE_WITH_ID" \\
-  -H "Authorization: Bearer ${tokenPlaceholder}"`;
+  -H "Authorization: Bearer ${token}"`;
 
   const fetchLogin = `const response = await fetch("${loginPath}", {
   method: "POST",
   headers: {
-    Authorization: "Bearer ${tokenPlaceholder}",
+    Authorization: "Bearer ${token}",
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
@@ -155,7 +159,7 @@ if (!response.ok) {
 
 const response = await fetch(\`${companiesPath}?\${params.toString()}\`, {
   headers: {
-    Authorization: "Bearer ${tokenPlaceholder}",
+    Authorization: "Bearer ${token}",
   },
 });
 
@@ -171,7 +175,7 @@ if (!response.ok) {
   const fetchDetail = `const companyId = "clxxxxxxxx";
 const response = await fetch(\`${origin}/api/v1/companies/\${companyId}\`, {
   headers: {
-    Authorization: "Bearer ${tokenPlaceholder}",
+    Authorization: "Bearer ${token}",
   },
 });
 
@@ -263,13 +267,14 @@ const company = result.data;`;
         <h2 className="display text-2xl text-ink">การยืนยันตัวตน</h2>
         <p className="max-w-[68ch] text-sm leading-relaxed text-ink-muted">
           ทุกเส้นใน <code className="font-mono text-ink">/api/v1</code> ต้องส่ง header{" "}
-          <code className="font-mono text-ink">Authorization</code> ค่าต้องตรงกับตัวแปร{" "}
-          <code className="font-mono text-ink">STUDENT_WEB_API_TOKEN</code> ใน{" "}
-          <code className="font-mono text-ink">.env</code> ของระบบอาจารย์ (และใน Vercel)
+          <code className="font-mono text-ink">Authorization</code>
+          คัดลอก token ด้านล่างไปใส่ใน env ของเว็บนิสิต ไม่ต้องถามอาจารย์ซ้ำ
+          อย่าแปะ token นี้ใน JavaScript ที่ browser ของนิสิตอ่านได้ — เรียก API จากเซิร์ฟเวอร์ของเว็บนิสิต
         </p>
+        <CodeBlock title="STUDENT_WEB_API_TOKEN" code={token} />
         <CodeBlock
           title="Header ที่ต้องส่งทุกครั้ง"
-          code={`Authorization: Bearer ${tokenPlaceholder}`}
+          code={`Authorization: Bearer ${token}`}
         />
         <ul className="grid gap-2 text-sm leading-relaxed text-ink-muted">
           <li>วาง token ฝั่งเซิร์ฟเวอร์ของเว็บนิสิต อย่าฝังใน JavaScript ที่ browser เห็นได้</li>
